@@ -337,6 +337,11 @@ export default function Home({ prices, fetchedAt }) {
                           {h.call.note}
                         </span>
                       )}
+                      {h.trailingStop && (
+                        <span style={{ display: 'block', fontSize: '0.6rem', color: 'var(--amber)', marginTop: '0.25rem', fontStyle: 'italic' }}>
+                          Trailing stop — 50% of current gains
+                        </span>
+                      )}
                     </td>
                   </tr>
                 ))}
