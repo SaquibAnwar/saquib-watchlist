@@ -100,7 +100,7 @@ export default function Home({ prices, fetchedAt }) {
 
   return (
     <div style={{ position: 'relative', zIndex: 1, minHeight: '100vh' }}>
-      <div style={{ maxWidth: 1280, margin: '0 auto', padding: '1.75rem 1rem 5rem' }}>
+      <div className="page-content">
 
         {/* ── Header ── */}
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
@@ -147,10 +147,7 @@ export default function Home({ prices, fetchedAt }) {
         )}
 
         {/* ── Summary cards ── */}
-        <div style={{
-          display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)',
-          gap: '0.75rem', marginBottom: '1.25rem',
-        }}>
+        <div className="summary-grid">
           <SummaryCard
             label="Portfolio Value"
             value={fmt(portfolioValue)}
@@ -180,10 +177,7 @@ export default function Home({ prices, fetchedAt }) {
 
         {/* ── Progress bar ── */}
         <div className="card" style={{ marginBottom: '1.25rem' }}>
-          <div style={{
-            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-            marginBottom: '0.65rem',
-          }}>
+          <div className="progress-header">
             <span style={{ fontSize: '0.78rem', color: 'var(--muted)', fontWeight: 500 }}>
               Progress toward ₹5,80,000 target
             </span>
@@ -216,7 +210,7 @@ export default function Home({ prices, fetchedAt }) {
 
         {/* ── Main table ── */}
         <div className="card" style={{ padding: 0, overflow: 'hidden', marginBottom: '1.75rem' }}>
-          <div style={{ overflowX: 'auto' }}>
+          <div className="table-scroll">
             <table>
               <thead>
                 <tr>
