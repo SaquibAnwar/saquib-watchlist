@@ -184,7 +184,7 @@ tbody tr:hover td {
 
 .summary-grid {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(6, 1fr);
   gap: 0.75rem;
   margin-bottom: 1.25rem;
 }
@@ -203,7 +203,7 @@ tbody tr:hover td {
   -webkit-overflow-scrolling: touch;
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1100px) {
   .summary-grid {
     grid-template-columns: repeat(3, 1fr);
   }
