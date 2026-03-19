@@ -47,7 +47,7 @@ export default function Home({ prices, fetchedAt }) {
   const [activeFilter, setActiveFilter] = useState('All');
 
   useEffect(() => {
-    const id = setInterval(() => router.replace(router.asPath), 15 * 60 * 1000);
+    const id = setInterval(() => router.reload(), 15 * 60 * 1000);
     return () => clearInterval(id);
   }, []);
 
@@ -112,7 +112,7 @@ export default function Home({ prices, fetchedAt }) {
               Prices last fetched at {lastUpdated}
             </p>
           </div>
-          <button className="filter-btn" onClick={() => router.replace(router.asPath)}
+          <button className="filter-btn" onClick={() => router.reload()}
             style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', marginTop: '0.25rem' }}>
             ↻ Refresh
           </button>
