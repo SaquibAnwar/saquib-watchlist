@@ -102,6 +102,11 @@ tbody td:first-child {
   letter-spacing: 0.03em;
 }
 
+tbody td:nth-child(7),
+tbody td:nth-child(8) {
+  white-space: nowrap;
+}
+
 tbody tr:hover td {
   background: var(--bg3);
 }
