@@ -4,22 +4,22 @@ export default async function handler(req, res) {
   }
 
   try {
-    const response = await fetch(process.env.SHEET_URL);
-    if (!response.ok) throw new Error(`Sheet fetch failed: ${response.status}`);
+    const { SHEETS_SPREADSHEET_ID, GOOGLE_API_KEY } = process.env;
+    const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEETS_SPREADSHEET_ID}/values/Sheet1!A:B?key=${GOOGLE_API_KEY}`;
 
-    const text = await response.text();
+    const response = await fetch(url);
+    if (!response.ok) throw new Error(`Sheets API failed: ${response.status}`);
+
+    const data = await response.json();
+    const rows = data.values ?? [];
     const prices = {};
 
-    const rows = text.trim().split('\n').slice(1); // skip header
-    for (const row of rows) {
-      const comma = row.indexOf(',');
-      if (comma === -1) continue;
-      const sym = row.slice(0, comma).trim();
-      const price = parseFloat(row.slice(comma + 1).trim());
-      if (sym && !isNaN(price)) prices[sym] = price;
+    for (const [sym, price] of rows.slice(1)) { // skip header
+      const parsed = parseFloat(price);
+      if (sym && !isNaN(parsed)) prices[sym.trim()] = parsed;
     }
 
-    res.setHeader('Cache-Control', 's-maxage=900, stale-while-revalidate=1800');
+    res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate=600');
     return res.status(200).json(prices);
   } catch (err) {
     console.error(err);
