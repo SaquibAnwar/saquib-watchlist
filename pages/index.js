@@ -7,7 +7,7 @@ const TARGET_VALUE = 580000;
 const MARCH_TARGET_REIMB   = 121000;
 const MARCH_TARGET_NO_REIMB = 166885;
 
-const FILTERS = ['All', 'Sell triggers', 'Hold', 'Wait', 'Exit', 'March sells'];
+const FILTERS = ['All', 'Sell triggers', 'Hold', 'Wait', 'Exit', 'March sells', 'Sold'];
 
 function fmt(n) {
   return '₹' + Math.abs(n).toLocaleString('en-IN', { maximumFractionDigits: 0 });
@@ -58,11 +58,26 @@ export default function Home({ prices, fetchedAt }) {
   const router = useRouter();
   const [activeFilter, setActiveFilter] = useState('All');
   const [reimbReceived, setReimbReceived] = useState(true);
+  const [soldSyms, setSoldSyms] = useState(new Set());
+
+  useEffect(() => {
+    const saved = JSON.parse(localStorage.getItem('soldSyms') || '[]');
+    setSoldSyms(new Set(saved));
+  }, []);
 
   useEffect(() => {
     const id = setInterval(() => router.reload(), 15 * 60 * 1000);
     return () => clearInterval(id);
   }, []);
+
+  function toggleSold(sym) {
+    setSoldSyms(prev => {
+      const next = new Set(prev);
+      next.has(sym) ? next.delete(sym) : next.add(sym);
+      localStorage.setItem('soldSyms', JSON.stringify([...next]));
+      return next;
+    });
+  }
 
   const marchTarget = reimbReceived ? MARCH_TARGET_REIMB : MARCH_TARGET_NO_REIMB;
 
@@ -71,6 +86,7 @@ export default function Home({ prices, fetchedAt }) {
     const isActiveMarch = isMarchActive(h, reimbReceived);
     const sellQty = getMarchSellQty(h, reimbReceived);
     const isPartial = isActiveMarch && sellQty < h.qty;
+    const isSold = soldSyms.has(h.sym);
     // pass effective marchSell flag so getCall uses the right branch
     const effectiveH = { ...h, marchSell: isActiveMarch };
     const curValue = h.qty * ltp;
@@ -79,11 +95,11 @@ export default function Home({ prices, fetchedAt }) {
     const call = getCall(effectiveH, ltp);
     const targetPrice = getTargetPrice(effectiveH);
     const gapPct = ((targetPrice - ltp) / ltp) * 100;
-    return { ...h, ltp, curValue, pnlVal, pnlPct, call, targetPrice, gapPct, isActiveMarch, sellQty, isPartial };
+    return { ...h, ltp, curValue, pnlVal, pnlPct, call, targetPrice, gapPct, isActiveMarch, sellQty, isPartial, isSold };
   });
 
-  // Portfolio stats — exclude active march stocks
-  const nonMarch = enriched.filter(h => !h.isActiveMarch);
+  // Portfolio stats — exclude active march stocks and sold stocks
+  const nonMarch = enriched.filter(h => !h.isActiveMarch && !h.isSold);
   const portfolioValue  = nonMarch.reduce((s, h) => s + h.curValue, 0);
   const amountInvested  = nonMarch.reduce((s, h) => s + h.invested, 0);
   const totalPnl        = portfolioValue - amountInvested;
@@ -92,16 +108,18 @@ export default function Home({ prices, fetchedAt }) {
 
   // Sell / exit counts — non-march only
   const sellCount = nonMarch.filter(h => h.call.label === 'SELL' || h.call.label === 'SELL NOW').length;
-  const exitCount = enriched.filter(h => h.call.label === 'EXIT').length;
+  const exitCount = enriched.filter(h => !h.isSold && h.call.label === 'EXIT').length;
 
-  // March sell plan
-  const marchStocks = enriched.filter(h => h.isActiveMarch);
+  // March sell plan — exclude sold
+  const marchStocks = enriched.filter(h => h.isActiveMarch && !h.isSold);
   const totalMarchProceeds = marchStocks.reduce((s, h) => s + h.sellQty * h.ltp, 0);
   const marchCovered = totalMarchProceeds >= marchTarget;
   const daysLeft = daysUntilMarch31();
 
   // Table filter
   const filtered = enriched.filter(h => {
+    if (activeFilter === 'Sold') return h.isSold;
+    if (h.isSold) return false;
     if (activeFilter === 'All') return true;
     if (activeFilter === 'Sell triggers') return h.call.label === 'SELL' || h.call.label === 'SELL NOW';
     if (activeFilter === 'Hold') return h.call.label === 'HOLD';
@@ -120,6 +138,7 @@ export default function Home({ prices, fetchedAt }) {
   });
 
   function rowStyle(h) {
+    if (h.isSold) return { background: 'rgba(255,255,255,0.02)', opacity: 0.45 };
     if (h.isActiveMarch) return { background: 'rgba(124,106,255,0.05)' };
     if (h.call.label === 'SELL' || h.call.label === 'SELL NOW') return { background: 'rgba(255,77,109,0.06)' };
     if (h.call.label === 'EXIT') return { background: 'rgba(255,179,71,0.06)' };
@@ -297,6 +316,7 @@ export default function Home({ prices, fetchedAt }) {
                   <th>Target ₹</th>
                   <th>Gap %</th>
                   <th>Call</th>
+                  <th></th>
                 </tr>
               </thead>
               <tbody>
@@ -304,10 +324,13 @@ export default function Home({ prices, fetchedAt }) {
                   <tr key={h.sym} style={rowStyle(h)}>
                     <td>
                       {h.sym}
-                      {h.isActiveMarch && (
+                      {h.isSold && (
+                        <span style={{ ...marchPillStyle, color: 'var(--muted)', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}>SOLD</span>
+                      )}
+                      {!h.isSold && h.isActiveMarch && (
                         <span style={marchPillStyle}>MARCH</span>
                       )}
-                      {h.isPartial && (
+                      {!h.isSold && h.isPartial && (
                         <span style={{ ...marchPillStyle, color: 'var(--amber)', background: 'var(--amber-dim)', border: '1px solid rgba(255,179,71,0.25)', marginLeft: '0.25rem' }}>
                           {h.sellQty}u
                         </span>
@@ -342,6 +365,22 @@ export default function Home({ prices, fetchedAt }) {
                           Trailing stop — 50% of current gains
                         </span>
                       )}
+                    </td>
+                    <td>
+                      <button
+                        onClick={() => toggleSold(h.sym)}
+                        style={{
+                          fontSize: '0.65rem', fontWeight: 600, cursor: 'pointer',
+                          padding: '0.2rem 0.5rem', borderRadius: 4,
+                          fontFamily: 'Space Mono, monospace',
+                          background: h.isSold ? 'rgba(255,255,255,0.08)' : 'transparent',
+                          color: h.isSold ? 'var(--muted)' : 'var(--muted)',
+                          border: '1px solid var(--border)',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {h.isSold ? '↩ Undo' : 'Mark sold'}
+                      </button>
                     </td>
                   </tr>
                 ))}
